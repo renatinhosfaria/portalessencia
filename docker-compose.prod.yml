@@ -1,0 +1,157 @@
+# =============================================================================
+# Docker Compose - Production
+# Portal Digital Colégio Essência Feliz
+# =============================================================================
+# Usage:
+#   docker compose -f docker-compose.prod.yml up -d
+#
+# Environment variables required:
+#   - DATABASE_URL
+#   - REDIS_URL
+#   - SESSION_SECRET
+#   - COOKIE_DOMAIN (optional, for custom domain)
+# =============================================================================
+
+services:
+  # ===========================================================================
+  # Traefik - Reverse Proxy & SSL
+  # ===========================================================================
+  traefik:
+    image: traefik:v3.2
+    container_name: essencia-traefik
+    restart: unless-stopped
+    command:
+      - "--api.dashboard=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      # Uncomment below for SSL when you have a domain
+      # - "--certificatesresolvers.letsencrypt.acme.httpchallenge=true"
+      # - "--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web"
+      # - "--certificatesresolvers.letsencrypt.acme.email=admin@essencia.edu.br"
+      # - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
+      - "--entrypoints.web.http.redirections.entryPoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entryPoint.scheme=https"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - traefik-certificates:/letsencrypt
+    networks:
+      - essencia-network
+
+  # ===========================================================================
+  # Web - Portal Público
+  # ===========================================================================
+  web:
+    image: ghcr.io/renatinhosfaria/portalessencia-web:latest
+    container_name: essencia-web
+    restart: unless-stopped
+    environment:
+      - API_INTERNAL_URL=http://api:3002
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.web.rule=Host(`173.249.13.241`) && !PathPrefix(`/admin`)"
+      - "traefik.http.routers.web.entrypoints=websecure"
+      - "traefik.http.routers.web.tls=true"
+      - "traefik.http.services.web.loadbalancer.server.port=3000"
+    networks:
+      - essencia-network
+    depends_on:
+      - api
+
+  # ===========================================================================
+  # Admin - Painel Administrativo  
+  # ===========================================================================
+  admin:
+    image: ghcr.io/renatinhosfaria/portalessencia-admin:latest
+    container_name: essencia-admin
+    restart: unless-stopped
+    environment:
+      - API_INTERNAL_URL=http://api:3002
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.admin.rule=Host(`173.249.13.241`) && PathPrefix(`/admin`)"
+      - "traefik.http.routers.admin.entrypoints=websecure"
+      - "traefik.http.routers.admin.tls=true"
+      - "traefik.http.routers.admin.middlewares=admin-stripprefix"
+      - "traefik.http.middlewares.admin-stripprefix.stripprefix.prefixes=/admin"
+      - "traefik.http.services.admin.loadbalancer.server.port=3001"
+    networks:
+      - essencia-network
+    depends_on:
+      - api
+
+  # ===========================================================================
+  # API - Backend NestJS
+  # ===========================================================================
+  api:
+    image: ghcr.io/renatinhosfaria/portalessencia-api:latest
+    container_name: essencia-api
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+      - COOKIE_DOMAIN=${COOKIE_DOMAIN:-}
+      - SESSION_TTL_HOURS=24
+    networks:
+      - essencia-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # ===========================================================================
+  # PostgreSQL Database
+  # ===========================================================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: essencia-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-essencia}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-essencia_db}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U essencia -d essencia_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - essencia-network
+
+  # ===========================================================================
+  # Redis - Session Store
+  # ===========================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: essencia-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - essencia-network
+
+# =============================================================================
+# Networks & Volumes
+# =============================================================================
+networks:
+  essencia-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
+  traefik-certificates:

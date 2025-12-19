@@ -1,0 +1,9 @@
+{
+  "extends": "./node_modules/@essencia/config/typescript/base.json",
+  "compilerOptions": {
+    "rootDir": "./src",
+    "baseUrl": "."
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist"]
+}

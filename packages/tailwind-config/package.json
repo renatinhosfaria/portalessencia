@@ -1,0 +1,17 @@
+{
+  "name": "@essencia/tailwind-config",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Shared Tailwind CSS configuration",
+  "main": "tailwind.config.ts",
+  "exports": {
+    ".": "./tailwind.config.ts"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.7.2"
+  },
+  "dependencies": {
+    "tailwindcss-animate": "^1.0.7"
+  }
+}

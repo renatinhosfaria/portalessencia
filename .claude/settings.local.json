@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir /A \"c:\\\\Users\\\\Renato\\\\Desktop\\\\VSCODE\\\\Essencia\")",
+      "Bash(dir /s /b \"c:\\\\Users\\\\Renato\\\\Desktop\\\\VSCODE\\\\Essencia\")",
+      "Bash(findstr:*)",
+      "Bash(docker compose:*)",
+      "Bash(pnpm db:generate:*)",
+      "Bash(DATABASE_URL=\"postgresql://essencia:essencia_dev@localhost:5432/essencia_db\" pnpm db:migrate:*)",
+      "Bash(DATABASE_URL=\"postgresql://essencia:essencia_dev@localhost:5432/essencia_db\" REDIS_URL=\"redis://localhost:6379\" pnpm dev:*)",
+      "Bash(docker stop:*)",
+      "Bash(pnpm add:*)",
+      "Bash(taskkill:*)",
+      "Bash(netstat:*)",
+      "Bash(timeout:*)",
+      "Bash(npm run build:*)",
+      "Bash(npm install)",
+      "Bash(pnpm install:*)",
+      "Bash(pnpm list:*)",
+      "Bash(pnpm dev)"
+    ]
+  }
+}
